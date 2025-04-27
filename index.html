@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor Listing</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background-color: #f1f3f6; }
+    header {
+      display: flex;
+      padding: 20px;
+      background-color: #2255a4;
+      align-items: center;
+      position: relative;
+    }
+    #searchInput {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    #search-button {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: white;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    #autocomplete-list {
+      position: absolute;
+      background: white;
+      top: 60px;
+      width: calc(100% - 60px);
+      max-height: 150px;
+      overflow-y: auto;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+    .suggestion-item {
+      padding: 10px;
+      cursor: pointer;
+    }
+    .suggestion-item:hover { background-color: #f0f0f0; }
+
+    .container { display: flex; margin-top: 20px; }
+
+    .sidebar {
+      width: 300px;
+      padding: 20px;
+    }
+
+    .doctor-list {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .doctor-card {
+      background-color: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .doctor-details { display: flex; align-items: center; }
+    .doctor-photo {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    .doctor-info { display: flex; flex-direction: column; }
+
+    .book-button {
+      padding: 8px 16px;
+      border: 1px solid #2255a4;
+      background: none;
+      color: #2255a4;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .book-button:hover {
+      background-color: #2255a4;
+      color: white;
+    }
+
+    label { font-size: 14px; }
+    input[type="checkbox"], input[type="radio"] { margin-right: 5px; }
+
+    .card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .clear-button {
+      margin-top: 15px;
+      padding: 8px 12px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .clear-button:hover {
+      background-color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <input type="text" id="searchInput" placeholder="Search Symptoms, Doctors, Specialists, Clinics">
+  <button id="search-button">🔍</button>
+  <div id="autocomplete-list"></div>
+</header>
+
+<div class="container">
+  <aside class="sidebar">
+    <section class="card sort-section">
+      <h3>Sort By</h3>
+      <label><input type="radio" name="sort" value="fees" id="sort-fees"> Price: Low-High</label><br>
+      <label><input type="radio" name="sort" value="experience" id="sort-experience"> Experience: Most Experience First</label>
+    </section>
+
+    <section class="card filter-section">
+      <h3>Filters</h3>
+      <div class="filter-specialties">
+        <h4>Specialities</h4>
+        <div id="specialties-list"></div>
+      </div>
+
+      <div class="filter-consultation" style="margin-top: 15px;">
+        <h4>Mode of Consultation</h4>
+        <label><input type="radio" name="consultation" value="video"> Video Consultation</label><br>
+        <label><input type="radio" name="consultation" value="clinic"> In-clinic Consultation</label><br>
+        <label><input type="radio" name="consultation" value="all" checked> All</label>
+      </div>
+
+      <button id="clear-filters" class="clear-button">Clear All Filters</button>
+    </section>
+  </aside>
+
+  <main class="doctor-list" id="doctor-list"></main>
+</div>
+
+<script>
+const doctors = [
+  {
+    name: "Dr. Munaf Inamdar",
+    image: "https://randomuser.me/api/portraits/men/11.jpg",
+    specialties: ["General Physician", "Ayurveda"],
+    qualification: "MBBS, MD-General Medicine",
+    experience: 27,
+    hospital: "Apex Multispeciality and Maternity",
+    location: "Kondhawa Khurd",
+    fee: 600,
+    mode: ["clinic", "video"]
+  },
+  {
+    name: "Dr. Subhash Bajaj",
+    image: "https://randomuser.me/api/portraits/men/12.jpg",
+    specialties: ["General Physician", "Homeopathy"],
+    qualification: "MBBS, Diploma in Cardiology",
+    experience: 11,
+    hospital: "Dr. Bajaj Wellness Clinic",
+    location: "Wanowarie",
+    fee: 600,
+    mode: ["clinic"]
+  },
+  {
+    name: "Dr. Mufaddal Zakir",
+    image: "https://randomuser.me/api/portraits/men/13.jpg",
+    specialties: ["General Physician", "Neurologist"],
+    qualification: "MBBS",
+    experience: 27,
+    hospital: "Sparsh Polyclinic",
+    location: "Wanwadi",
+    fee: 600,
+    mode: ["video"]
+  },
+  {
+    name: "Dr. Ajay Gangoli",
+    image: "https://randomuser.me/api/portraits/men/14.jpg",
+    specialties: ["General Physician", "Orthopaedic"],
+    qualification: "MBBS",
+    experience: 34,
+    hospital: "Niramaya Clinic",
+    location: "Wanowarie",
+    fee: 400,
+    mode: ["clinic", "video"]
+  },
+  {
+    name: "Dr. Suman Patel",
+    image: "https://randomuser.me/api/portraits/women/15.jpg",
+    specialties: ["Cardiologist", "Dietitian/Nutritionist"],
+    qualification: "MBBS, MD-Cardiology",
+    experience: 20,
+    hospital: "Healthy Heart Clinic",
+    location: "Downtown",
+    fee: 800,
+    mode: ["clinic"]
+  },
+  {
+    name: "Dr. Priya Sharma",
+    image: "https://randomuser.me/api/portraits/women/16.jpg",
+    specialties: ["Dermatologist", "Homeopath"],
+    qualification: "MBBS, Diploma in Dermatology",
+    experience: 15,
+    hospital: "Skin Care Clinic",
+    location: "Uptown",
+    fee: 500,
+    mode: ["video"]
+  }
+];
+
+let filteredDoctors = [...doctors];
+let selectedSpecialties = new Set();
+let selectedMode = "all";
+let selectedSort = "";
+let filterOrder = [];
+
+function displayDoctors(list) {
+  const container = document.getElementById("doctor-list");
+  container.innerHTML = "";
+  const fallback = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+  list.forEach((doc) => {
+    container.innerHTML += `
+      <div class="doctor-card">
+        <div class="doctor-details">
+          <img src="${doc.image || fallback}" alt="${doc.name}" class="doctor-photo">
+          <div class="doctor-info">
+            <h3>${doc.name}</h3>
+            <p>${doc.specialties.join(', ')}</p>
+            <p>${doc.qualification}</p>
+            <p>${doc.experience} yrs exp.</p>
+            <p>${doc.hospital}</p>
+            <p>📍 ${doc.location}</p>
+          </div>
+        </div>
+        <div>
+          <p>₹ ${doc.fee}</p>
+          <button class="book-button">Book Appointment</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function populateSpecialties(doctors) {
+  const specialtiesSet = new Set();
+  doctors.forEach(doc => doc.specialties.forEach(spec => specialtiesSet.add(spec)));
+  const specialtiesList = document.getElementById('specialties-list');
+  specialtiesList.innerHTML = '';
+  specialtiesSet.forEach(spec => {
+    const idValue = spec.replace(/\s+/g, '-');
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" value="${spec}" data-testid="filter-specialty-${idValue}"> ${spec}`;
+    specialtiesList.appendChild(label);
+    specialtiesList.appendChild(document.createElement('br'));
+  });
+}
+
+function applyFilters() {
+  let tempList = [...doctors];
+  for (let filter of filterOrder) {
+    if (filter === 'specialty') {
+      tempList = tempList.filter(doc =>
+        selectedSpecialties.size === 0 ||
+        doc.specialties.some(spec => selectedSpecialties.has(spec))
+      );
+    } else if (filter === 'mode') {
+      tempList = tempList.filter(doc =>
+        selectedMode === "all" || (doc.mode && doc.mode.includes(selectedMode))
+      );
+    } else if (filter === 'sort') {
+      if (selectedSort === 'fees') tempList.sort((a, b) => a.fee - b.fee);
+      else if (selectedSort === 'experience') tempList.sort((a, b) => b.experience - a.experience);
+    }
+  }
+  displayDoctors(tempList);
+}
+
+document.getElementById('specialties-list').addEventListener('change', e => {
+  if (e.target.type === 'checkbox') {
+    if (e.target.checked) selectedSpecialties.add(e.target.value);
+    else selectedSpecialties.delete(e.target.value);
+    if (!filterOrder.includes('specialty')) filterOrder.push('specialty');
+    applyFilters();
+  }
+});
+
+document.querySelectorAll('input[name="consultation"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    selectedMode = e.target.value;
+    if (!filterOrder.includes('mode')) filterOrder.push('mode');
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('input[name="sort"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    selectedSort = e.target.value;
+    if (!filterOrder.includes('sort')) filterOrder.push('sort');
+    applyFilters();
+  });
+});
+
+document.getElementById('clear-filters').addEventListener('click', () => {
+  selectedSpecialties.clear();
+  selectedMode = 'all';
+  selectedSort = '';
+  filterOrder = [];
+
+  document.querySelectorAll('#specialties-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.querySelector('input[name="consultation"][value="all"]').checked = true;
+  document.querySelectorAll('input[name="sort"]').forEach(r => r.checked = false);
+
+  applyFilters();
+});
+
+const searchInput = document.getElementById("searchInput");
+const autocompleteList = document.getElementById("autocomplete-list");
+
+searchInput.addEventListener("input", function () {
+  const query = this.value.toLowerCase();
+  const suggestions = doctors.filter(doc =>
+    doc.name.toLowerCase().includes(query) || 
+    doc.specialties.some(spec => spec.toLowerCase().includes(query))
+  ).slice(0, 3);
+
+  autocompleteList.innerHTML = '';
+  if (suggestions.length > 0) {
+    suggestions.forEach(doc => {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+      item.textContent = doc.name;
+      item.onclick = () => {
+        searchInput.value = doc.name;
+        filteredDoctors = doctors.filter(d =>
+          d.name.toLowerCase().includes(doc.name.toLowerCase()) ||
+          d.specialties.some(spec => spec.toLowerCase().includes(doc.name.toLowerCase()))
+        );
+        displayDoctors(filteredDoctors);
+        autocompleteList.innerHTML = '';
+      };
+      autocompleteList.appendChild(item);
+    });
+  } else if (searchInput.value.trim() !== '') {
+    const noMatch = document.createElement('div');
+    noMatch.className = 'suggestion-item';
+    noMatch.style.color = 'gray';
+    noMatch.textContent = 'No results found';
+    autocompleteList.appendChild(noMatch);
+  }
+});
+
+searchInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    const query = this.value.toLowerCase();
+    filteredDoctors = doctors.filter(d =>
+      d.name.toLowerCase().includes(query) ||
+      d.specialties.some(spec => spec.toLowerCase().includes(query))
+    );
+    displayDoctors(filteredDoctors);
+    autocompleteList.innerHTML = '';
+  }
+});
+
+document.getElementById("search-button").addEventListener("click", () => {
+  const query = searchInput.value.toLowerCase();
+  filteredDoctors = doctors.filter(d =>
+    d.name.toLowerCase().includes(query) ||
+    d.specialties.some(spec => spec.toLowerCase().includes(query))
+  );
+  displayDoctors(filteredDoctors);
+  autocompleteList.innerHTML = '';
+});
+
+displayDoctors(doctors);
+populateSpecialties(doctors);
+</script>
+
+</body>
+</html>
